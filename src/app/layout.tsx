@@ -32,6 +32,9 @@ export default function RootLayout({
                 <Link href="/causes" className="hover:text-emerald-400">
                   Causes
                 </Link>
+                  <Link href="/admin" className="hover:text-emerald-400">
+                  Dashboard
+                </Link>
                 <CartLink />
               </nav>
             </div>
