@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CauseCart
 
-## Getting Started
+**A shop-to-give e-commerce store: 50% of the profit from every order goes to a local school, team, or nonprofit the shopper chooses.**
 
-First, run the development server:
+**Live demo:** https://causecart.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Built with Next.js, React, TypeScript, PostgreSQL, Prisma, Docker, and Vercel.
+
+---
+
+## Features
+
+- **Product catalog**: search, category filter, and sorting, with filters kept in the URL so results are shareable and bookmarkable
+- **Product pages**: price, description, and exactly how much the item gives to your cause
+- **Shopping cart**: updates instantly across the site and persists across page refreshes
+- **Checkout**: pick a cause, place the order, and get a receipt showing the exact donation
+- **Cause directory**: searchable by name, city, and type, with live fundraising progress toward each goal
+- **Admin dashboard**: revenue, profit, donations, orders, average order value, a 30-day donations chart, top products, and donations by cause
+
+## How the donation works
+
+Donations are calculated from **net profit**, not revenue:
+
+```
+profit   = (price − cost) × quantity, summed across the order
+donation = 50% of profit, rounded down to the cent
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Each order item stores the **price and cost at the time of purchase**, so historical orders and donation totals stay accurate even if product prices change later.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Engineering decisions
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Decision | Why |
+|---|---|
+| **Server-side pricing at checkout** | The browser sends only product IDs and quantities. A Next.js Server Action loads real prices from the database and calculates totals, so prices can't be tampered with in the browser. |
+| **Stock decrement inside a transaction** | `updateMany ... where stock >= quantity` inside `prisma.$transaction` means two shoppers can't buy the last item at the same time, and a failed step rolls back the whole order. |
+| **Money stored as integer cents** | Avoids floating-point rounding errors (`0.1 + 0.2 ≠ 0.3`). |
+| **One shared donation function** | `calculateOrderTotals` is used by checkout, the seed script, and the product pages, so the business rule lives in one place. |
+| **SQL aggregation for analytics** | `GROUP BY`, `LEFT JOIN`, and `generate_series` compute dashboard numbers in single queries (no N+1 queries), and days with no orders still appear as $0. |
+| **Server Components by default** | Pages fetch data on the server; only interactive pieces (cart, buttons, checkout form) are Client Components, so very little JavaScript is sent to the browser. |
+| **Cache Components + Suspense** | Static page shells render instantly while live data streams in (Next.js 16 Partial Prerendering). |
+| **Validated URL input** | Filter and sort values from the URL are checked against allowed values before they reach a query. |
+| **Privacy on public pages** | Cause pages show donation amounts and dates, never customer emails. |
+| **Custom SVG chart** | The dashboard chart is drawn with plain SVG on the server, with no chart library, plus an accessible table view. |
 
-## Learn More
+## Tech stack
 
-To learn more about Next.js, take a look at the following resources:
+| Layer | Tools |
+|---|---|
+| Front end | React, Next.js 16 (App Router), TypeScript, Tailwind CSS |
+| Back end | Next.js Server Components and Server Actions |
+| Database | PostgreSQL, Prisma ORM and migrations |
+| Local development | Docker Compose (Postgres 16) |
+| Deployment | Vercel, with managed Postgres (Neon) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data model
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+Cause  1 ──── * Order  1 ──── * OrderItem  * ──── 1  Product
+```
 
-## Deploy on Vercel
+- **Product**: name, category, price, cost, stock
+- **Cause**: name, type (School, PTA, Sports, Arts, Nonprofit), city, goal
+- **Order**: cause, subtotal, profit, donation, customer email
+- **OrderItem**: product, quantity, unit price and cost at time of purchase
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Run it locally
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Requirements: Node.js 20.9+ and Docker Desktop.
+
+```bash
+git clone https://github.com/KarnatiNarmada/causecart.git
+cd causecart
+npm install
+
+# Start Postgres in Docker
+docker compose up -d
+
+# Point the app at the local database
+echo 'DATABASE_URL="postgresql://causecart:causecart@localhost:5432/causecart?schema=public"' > .env
+
+# Create the tables and load sample data
+npx prisma migrate dev
+npx tsx prisma/seed.ts
+npx tsx scripts/make-product-images.ts
+
+# Start the app at http://localhost:3000
+npm run dev
+```
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                 Home page with live impact stats
+│   ├── products/                Catalog and product detail pages
+│   ├── cart/                    Cart page
+│   ├── checkout/                Checkout page and placeOrder Server Action
+│   ├── orders/[id]/             Order receipt
+│   ├── causes/                  Cause directory and cause pages
+│   └── admin/                   Dashboard
+├── components/                  ProductCard, CartProvider, CheckoutForm, charts, …
+└── lib/
+    ├── donation.ts              Donation rule and money formatting
+    ├── analytics.ts             Dashboard SQL queries
+    └── prisma.ts                Shared database client
+prisma/
+├── schema.prisma                Data model
+├── migrations/                  SQL migrations
+└── seed.ts                      Sample products, causes, and orders
+```
+
+## Known limitations and next steps
+
+- **No authentication yet.** The admin dashboard is public for this demo; next step is an admin login.
+- **Payments are simulated.** Checkout saves the order without charging a card; a real store would integrate a payment provider.
+- **Receipts aren't emailed.** The email is stored with the order; sending would use an email service.
+- **Order pages use sequential IDs.** With accounts, receipts would be limited to the order's owner.
+- **Tests.** Add unit tests for `calculateOrderTotals` and integration tests for checkout.
+
+---
+
+*Sample causes are fictional organizations. Built by [Narmada Karnati](https://www.linkedin.com/in/narmada-karnati-b7b90a190).*
