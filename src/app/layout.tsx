@@ -25,7 +25,15 @@ export default function RootLayout({
               <Link href="/products" className="text-xl font-bold">
                 Cause<span className="text-emerald-500">Cart</span>
               </Link>
-              <CartLink />
+                            <nav className="flex items-center gap-6 text-sm">
+                <Link href="/products" className="hover:text-emerald-400">
+                  Shop
+                </Link>
+                <Link href="/causes" className="hover:text-emerald-400">
+                  Causes
+                </Link>
+                <CartLink />
+              </nav>
             </div>
           </header>
           {children}
