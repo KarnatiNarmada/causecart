@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: causecart-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: causecart
+      POSTGRES_PASSWORD: causecart
+      POSTGRES_DB: causecart
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

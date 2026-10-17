@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Category {
+  HOME
+  BEAUTY
+  JEWELRY
+  PET
+  COFFEE
+}
+
+enum CauseType {
+  SCHOOL
+  PTA
+  SPORTS
+  ARTS
+  NONPROFIT
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  slug        String      @unique
+  description String
+  category    Category
+  priceCents  Int
+  costCents   Int
+  imageUrl    String
+  stock       Int         @default(100)
+  createdAt   DateTime    @default(now())
+  orderItems  OrderItem[]
+
+  @@index([category])
+}
+
+model Cause {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  type        CauseType
+  city        String
+  state       String
+  description String
+  goalCents   Int
+  createdAt   DateTime  @default(now())
+  orders      Order[]
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  causeId       Int
+  cause         Cause       @relation(fields: [causeId], references: [id])
+  customerEmail String
+  subtotalCents Int
+  profitCents   Int
+  donationCents Int
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+
+  @@index([causeId])
+}
+
+model OrderItem {
+  id             Int     @id @default(autoincrement())
+  orderId        Int
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      Int
+  product        Product @relation(fields: [productId], references: [id])
+  quantity       Int
+  unitPriceCents Int
+  unitCostCents  Int
+}
