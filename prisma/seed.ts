@@ -52,7 +52,7 @@ async function main() {
   await prisma.product.createMany({
     data: products.map((p) => ({
       ...p,
-      imageUrl: `https://picsum.photos/seed/${p.slug}/600/600`,
+            imageUrl: `/products/${p.slug}.svg`,
     })),
   });
   await prisma.cause.createMany({ data: causes });

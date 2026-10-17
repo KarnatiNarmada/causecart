@@ -1,69 +1,120 @@
-import Image from "next/image";
+import { Suspense } from "react";
+import Link from "next/link";
+import { connection } from "next/server";
+import { formatCents } from "@/lib/donation";
+import { getDonationsByCause, getKpis } from "@/lib/analytics";
+import { ProgressBar } from "@/components/ProgressBar";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            Welcome to CauseCart{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main>
+      <section className="mx-auto max-w-6xl px-4 pb-12 pt-16">
+        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-400">
+          Shop-to-give marketplace
+        </p>
+        <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
+          Shop everyday essentials. Fund your local schools and teams.
+        </h1>
+        <p className="mt-5 max-w-2xl text-lg text-gray-300">
+          50% of the profit from every order goes to a school, team, or nonprofit you choose.
+          Same products, same prices, more good in your community.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/products"
+            className="rounded-lg bg-emerald-600 px-5 py-3 font-medium text-white hover:bg-emerald-700"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Start shopping
+          </Link>
+          <Link
+            href="/causes"
+            className="rounded-lg border border-gray-600 px-5 py-3 font-medium hover:bg-gray-800"
           >
-            Documentation
-          </a>
+            Find a cause
+          </Link>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <Suspense fallback={null}>
+        <ImpactSection />
+      </Suspense>
+
+      <section className="mx-auto max-w-6xl px-4 py-12">
+        <h2 className="text-2xl font-bold">How it works</h2>
+        <ol className="mt-6 grid gap-6 md:grid-cols-3">
+          <li className="rounded-2xl border border-gray-800 p-5">
+            <p className="text-sm font-semibold text-emerald-400">Step 1</p>
+            <p className="mt-1 text-lg font-semibold">Shop what you already buy</p>
+            <p className="mt-2 text-sm text-gray-400">
+              Home goods, beauty, jewelry, pet supplies, and coffee.
+            </p>
+          </li>
+          <li className="rounded-2xl border border-gray-800 p-5">
+            <p className="text-sm font-semibold text-emerald-400">Step 2</p>
+            <p className="mt-1 text-lg font-semibold">Pick a cause at checkout</p>
+            <p className="mt-2 text-sm text-gray-400">
+              Choose a local school, PTA, team, arts group, or nonprofit.
+            </p>
+          </li>
+          <li className="rounded-2xl border border-gray-800 p-5">
+            <p className="text-sm font-semibold text-emerald-400">Step 3</p>
+            <p className="mt-1 text-lg font-semibold">Half the profit goes to them</p>
+            <p className="mt-2 text-sm text-gray-400">
+              Your receipt shows exactly how much your order gave.
+            </p>
+          </li>
+        </ol>
+      </section>
+    </main>
+  );
+}
+
+async function ImpactSection() {
+  await connection();
+
+  const [kpis, causes] = await Promise.all([getKpis(), getDonationsByCause()]);
+  const topCauses = causes.slice(0, 3);
+
+  return (
+    <section className="border-y border-gray-800 bg-gray-950">
+      <div className="mx-auto max-w-6xl px-4 py-12">
+        <div className="grid gap-8 md:grid-cols-3">
+          <div>
+            <p className="text-sm text-gray-400">Given to local causes so far</p>
+            <p className="mt-1 text-5xl font-semibold text-emerald-400">
+              {formatCents(kpis.donationCents)}
+            </p>
+            <p className="mt-2 text-sm text-gray-400">
+              from {kpis.orderCount.toLocaleString("en-US")} orders across {causes.length} causes
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <p className="text-sm text-gray-400">Top causes right now</p>
+            <ul className="mt-3 space-y-4">
+              {topCauses.map((cause) => (
+                <li key={cause.id}>
+                  <Link href={`/causes/${cause.slug}`} className="group block">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium group-hover:underline">{cause.name}</span>
+                      <span className="text-gray-400">
+                        {formatCents(cause.raisedCents)} of {formatCents(cause.goalCents)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5">
+                      <ProgressBar
+                        valueCents={cause.raisedCents}
+                        goalCents={cause.goalCents}
+                        label={`${cause.name} fundraising progress`}
+                      />
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

@@ -48,10 +48,11 @@ export async function getTopProducts(limit = 5) {
 
 export async function getDonationsByCause() {
   return prisma.$queryRaw<
-    { id: number; name: string; goalCents: number; raisedCents: number; orders: number }[]
+    { id: number; name: string; slug: string; goalCents: number; raisedCents: number; orders: number }[]
   >`
     SELECT c.id,
            c.name,
+            c.slug,
            c."goalCents",
            COALESCE(SUM(o."donationCents"), 0)::int AS "raisedCents",
            COUNT(o.id)::int AS orders
